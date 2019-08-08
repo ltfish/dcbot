@@ -75,6 +75,14 @@ def listservice():
     cmd = form['command']
     assert cmd == "/listservice"
 
+    # is this guy a player?
+    user_id = form['user_id']
+    if not is_player(user_id):
+        return {
+            'response_type': 'ephemeral',
+            'text': NOT_A_PLAYER,
+        }
+
     if form['text'] == "in_channel":
         response_type = "in_channel"
     else:
@@ -114,6 +122,14 @@ def newservice():
     form = request.form
     cmd = form['command']
     assert cmd == "/newservice"
+
+    # is this guy a player?
+    user_id = form['user_id']
+    if not is_player(user_id):
+        return {
+            'response_type': 'ephemeral',
+            'text': NOT_A_PLAYER,
+        }
 
     # sanitize service name
     service = form['text']
@@ -297,6 +313,29 @@ def floorrequests():
             }
         ]
     }
+
+
+@bp.route("/iamonthefloor")
+def iamonthefloor():
+    """
+    Player specifies that he is on the floor.
+
+    text: None
+    """
+
+    return "Not implemented. Do we really need this?"
+
+
+@bp.route("/slackers")
+def slackers():
+    """
+    Get a list of "slackers".
+
+    text: None
+    """
+
+    return "Not implemented. Do we really need this?"
+
 
 #
 # Worker routines
