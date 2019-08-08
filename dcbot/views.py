@@ -8,7 +8,8 @@ from flask import (Blueprint, flash, g, redirect, request, session, url_for, jso
 
 from .logic import (is_player, get_service_for_group_id, get_service_for_service_host, get_user_id, set_intent,
     get_members_intents)
-from .slack_logic import sl, get_group_name, get_service_name
+from .slack_logic import sl
+from .utils import get_group_name
 from .logic import populate_groups, get_group_id_for_service, set_host, get_host
 from .errors import BotGroupError
 
