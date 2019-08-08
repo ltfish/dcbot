@@ -80,10 +80,10 @@ def listservice():
     # is this guy a player?
     user_id = form['user_id']
     if not is_player(user_id):
-        return {
+        return jsonify({
             'response_type': 'ephemeral',
             'text': NOT_A_PLAYER,
-        }
+        })
 
     if form['text'] == "in_channel":
         response_type = "in_channel"
