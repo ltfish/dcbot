@@ -277,12 +277,12 @@ def get_members_intents():
     """
     Get all members and their intents.
 
-    :return:    A dict of member IDs and whether each member wants to get onto the CTF floor or not.
+    :return:    A dict of member IDs and a tuple of (the member's intent, when the member was last on the floor).
     """
 
     r = db_session.query(CTFFloorStatus).all()
     for s in r:
-        yield s.member_id, s.status == CTFFloorStatusEnum.WantsToGo
+        yield s.member_id, (s.status, s.recent_on_floor_at)
 
 
 def set_member_on_floor(member_id):

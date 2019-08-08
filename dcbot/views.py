@@ -6,11 +6,12 @@ import requests
 
 from flask import (Blueprint, flash, g, redirect, request, session, url_for, jsonify)
 
+from .enums import CTFFloorStatusEnum
 from .logic import (is_player, get_service_for_group_id, get_service_for_service_host, get_user_id, set_intent,
     get_members_intents)
 from .slack_logic import sl
-from .utils import get_group_name
-from .logic import populate_groups, get_group_id_for_service, set_host, get_host
+from .utils import get_group_name, user_text_to_user_id
+from .logic import populate_groups, get_group_id_for_service, set_host, get_host, set_member_on_floor
 from .errors import BotGroupError
 
 bp = Blueprint('dcbot', __name__, url_prefix="/dcbot")
@@ -301,16 +302,35 @@ def floorrequests():
             'text': NOT_A_PLAYER,
         }
 
-    attachment = [ ]
-    for member_id, wants_to_go in get_members_intents():
-        attachment.append("<@%s> %s" % (member_id, wants_to_go))
+    wantstogo = [ ]
+    onthefloor = [ ]
+    neutral = [ ]
+    for member_id, (intent, last_on_floor) in get_members_intents():
+        if intent == CTFFloorStatusEnum.WantsToGo:
+            wantstogo.append("<@%s> | %s" % (member_id, CTFFloorStatusEnum.to_string(intent)))
+        elif intent == CTFFloorStatusEnum.OnTheFloor:
+            onthefloor.append("<@%s>" % member_id)
+        elif intent == CTFFloorStatusEnum.Neutral:
+            neutral.append("<@%s>" % member_id)
 
     return {
         "response_type": "ephemeral",
-        "text": "%d requests." % len(attachment),
+        "text": "*There are %d players who want to go to the CTF floor.*" % len(wantstogo),
         "attachments": [
             {
-                "text": "\n".join(attachment),
+                "text": "\n".join(wantstogo),
+            },
+            {
+                "text": "*%d players are currently on the floor.*" % len(onthefloor),
+            },
+            {
+                "text": "\n".join(onthefloor),
+            },
+            {
+                "text": "*%d players are OK either way.*" % len(neutral),
+            },
+            {
+                "text": "\n".join(neutral),
             }
         ]
     }
@@ -336,6 +356,37 @@ def slackers():
     """
 
     return "Not implemented. Do we really need this?"
+
+
+@bp.route("/approve", methods=("POST",))
+def approve():
+    """
+    Approve a player's request of going on to the CTF floor.
+
+    text: Name of the player or the ID of the player.
+    """
+
+    form = request.form
+    cmd = form['command']
+    assert cmd == "/approve"
+
+    # Only certain people can do this. Let's hard code a list of allowed user IDs
+    allowed_uids = {
+        'U03REJMH6', # massimo zanardi
+        'U03RQ5CJN', # fish wang on Shellphish Slack
+        'ULQ3YEH5G', # fish wang on ShellphishTest Slack
+    }
+
+    if form['user_id'] not in allowed_uids:
+        return "_You do not have permission to perform this request._"
+
+    member_text = form['text']
+    member_id = user_text_to_user_id(member_text)
+    set_member_on_floor(member_id)
+
+    th = threading.Thread(target=approve_worker, args=(member_id,), daemon=True)
+    th.start()
+    return REQUEST_RECEIVED + " Member <@%s> is set to be on the floor." % member_id
 
 
 #
@@ -475,3 +526,7 @@ def newservice_worker(response_url, service):
         'response_type': 'ephemeral',
         'text': '_Successfully created a private channel for service %s._' % service,
     })
+
+
+def approve_worker(member_id):
+    sl.yell(member_id, "You are now invited to go to the CTF floor in Planet Hollywood. Don't get lost!")
