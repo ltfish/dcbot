@@ -11,7 +11,8 @@ from .logic import (is_player, get_service_for_group_id, get_service_for_service
     get_members_intents)
 from .slack_logic import sl
 from .utils import get_group_name, user_text_to_user_id
-from .logic import populate_groups, get_group_id_for_service, set_host, get_host, set_member_on_floor
+from .logic import (populate_groups, get_group_id_for_service, set_host, get_host, set_member_on_floor,
+                    set_member_off_floor)
 from .errors import BotGroupError
 
 bp = Blueprint('dcbot', __name__, url_prefix="/dcbot")
@@ -23,9 +24,18 @@ MAIN_CHANNEL = "defcon2019"
 
 NOT_A_PLAYER = '_You do not seem to be a Shellphish player at DEFCON CTF 2019. Contact the team lead if you believe ' \
                'this is incorrect._'
-REQUEST_RECEIVED = "_Request received :) Hang on_"
+REQUEST_RECEIVED = "_Request received :) Hang on._"
 CHANNEL_DOES_NOT_EXIST = '_Channel for service %s does not exist. Maybe the channel hasn\'t been created yet. ' \
                          'You may create the channel using the /newservice command._'
+
+# Admin UIDs
+
+ADMIN_UIDS = {
+    'U03REJMH6', # massimo zanardi
+    'U03RQ5CJN', # fish wang on Shellphish Slack
+    'ULQ3YEH5G', # fish wang on ShellphishTest Slack
+}
+
 
 #
 # Util methods
@@ -283,8 +293,8 @@ def floor():
            "get back to you later when it's your turn._"
 
 
-@bp.route("/floorrequests", methods=("POST", ))
-def floorrequests():
+@bp.route("/floorstatus", methods=("POST", ))
+def floorstatus():
     """
     List everyone who has requested to be on the floor.
 
@@ -293,7 +303,7 @@ def floorrequests():
 
     form = request.form
     cmd = form['command']
-    assert cmd == "/floorrequests"
+    assert cmd == "/floorstatus"
 
     user_id = form["user_id"]
     if not is_player(user_id):
@@ -371,13 +381,7 @@ def approve():
     assert cmd == "/approve"
 
     # Only certain people can do this. Let's hard code a list of allowed user IDs
-    allowed_uids = {
-        'U03REJMH6', # massimo zanardi
-        'U03RQ5CJN', # fish wang on Shellphish Slack
-        'ULQ3YEH5G', # fish wang on ShellphishTest Slack
-    }
-
-    if form['user_id'] not in allowed_uids:
+    if form['user_id'] not in ADMIN_UIDS:
         return "_You do not have permission to perform this request._"
 
     member_text = form['text']
@@ -386,7 +390,35 @@ def approve():
 
     th = threading.Thread(target=approve_worker, args=(member_id,), daemon=True)
     th.start()
-    return REQUEST_RECEIVED + " Member <@%s> is set to be on the floor." % member_id
+    return REQUEST_RECEIVED + " Player <@%s> is set to be on the floor." % member_id
+
+
+@bp.route("/leavefloor", methods=("POST",))
+def leavefloor():
+    """
+    Leave the CTF floor.
+
+    text: Name of the player to leave the floor (only admins can do this), or empty to mean that the current user is
+    leaving the floor.
+    """
+
+    form = request.form
+    cmd = form['command']
+    assert cmd == "/leavefloor"
+
+    member_text = form['text']
+    if not member_text:
+        member_id = form['user_id']
+    else:
+        # convert the text to member ID
+        member_id = user_text_to_user_id(member_text)
+    if member_id != form['user_id']:
+        # are we an admin?
+        if form['user_id'] not in ADMIN_UIDS:
+            return "_You do not have permission to perform this request._"
+
+    set_member_off_floor(member_id)
+    return REQUEST_RECEIVED + " Player <@%s> is not on the floor any more." % member_id
 
 
 #
@@ -458,20 +490,20 @@ def host_worker(response_url, user_id, group_id):
     })
 
     if old_host is None:
-        sl.yell(MAIN_CHANNEL, "<@%s> becomes the service host of challenge %s." % (
+        sl.yell(MAIN_CHANNEL, "_<@%s> becomes the service host of challenge %s._" % (
             user_id, service_name), resiliency=True)
-        sl.yell(group_name, "<@%s> becomes the service host of challenge %s." % (
+        sl.yell(group_name, "_<@%s> becomes the service host of challenge %s._" % (
             user_id, service_name), resiliency=True)
     elif old_host == user_id:
-        sl.yell(MAIN_CHANNEL, "<@%s> is the service host of challenge %s." % (
+        sl.yell(MAIN_CHANNEL, "_<@%s> is the service host of challenge %s._" % (
             user_id, service_name), resiliency=True)
-        sl.yell(group_name, "<@%s> is the service host of challenge %s." % (
+        sl.yell(group_name, "_<@%s> is the service host of challenge %s._" % (
             user_id, service_name), resiliency=True)
     else:
-        sl.yell(MAIN_CHANNEL, "<@%s> becomes the service host of challenge %s replacing <@%s>." % (
+        sl.yell(MAIN_CHANNEL, "_<@%s> becomes the service host of challenge %s replacing <@%s>._" % (
             user_id, service_name, old_host
         ), resiliency=True)
-        sl.yell(group_name, "<@%s> becomes the service host of challenge %s replacing <@%s>." % (
+        sl.yell(group_name, "_<@%s> becomes the service host of challenge %s replacing <@%s>._" % (
             user_id, service_name, old_host
         ), resiliency=True)
 
@@ -494,10 +526,10 @@ def unhost_worker(response_url, user_id):
         'text': '_Successfully unhosted yourself from service %s._' % current_hosting
     })
 
-    sl.yell(MAIN_CHANNEL, "<@%s> is no longer the service host of challenge %s." % (
+    sl.yell(MAIN_CHANNEL, "_<@%s> is no longer the service host of challenge %s._" % (
         user_id, current_hosting,
     ))
-    sl.yell(get_group_name(current_hosting), "<@%s> is no longer the service host of challenge %s." % (
+    sl.yell(get_group_name(current_hosting), "_<@%s> is no longer the service host of challenge %s._" % (
         user_id, current_hosting,
     ))
 
@@ -529,4 +561,5 @@ def newservice_worker(response_url, service):
 
 
 def approve_worker(member_id):
-    sl.yell(member_id, "You are now invited to go to the CTF floor in Planet Hollywood. Don't get lost!")
+    sl.yell(member_id, "You are now invited to go to the CTF floor in Planet Hollywood. *Don't get lost!* "
+                       "Remember to run /leavefloor before you are leaving the CTF floor.")

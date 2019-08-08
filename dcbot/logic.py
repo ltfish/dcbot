@@ -303,6 +303,23 @@ def set_member_on_floor(member_id):
     db_session.commit()
 
 
+def set_member_off_floor(member_id):
+    """
+    Set a member specified by @member_id to be not on the floor.
+
+    :param str member_id:
+    :return:
+    """
+
+    try:
+        s = db_session.query(CTFFloorStatus).\
+            filter(CTFFloorStatus.member_id == member_id).one()
+        s.status = CTFFloorStatusEnum.Neutral
+    except NoResultFound:
+        pass
+    db_session.commit()
+
+
 def get_members_on_floor():
     """
     Get member IDs of all members who are on the CTF floor.
