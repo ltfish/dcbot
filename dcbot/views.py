@@ -9,6 +9,7 @@ from flask import (Blueprint, flash, g, redirect, request, session, url_for, jso
 from .enums import CTFFloorStatusEnum
 from .logic import (is_player, get_service_for_group_id, get_service_for_service_host, get_user_id, set_intent,
     get_members_intents)
+from .messages import REQUEST_RECEIVED, NOT_A_PLAYER, MAIN_CHANNEL, CHANNEL_DOES_NOT_EXIST
 from .slack_logic import sl
 from .utils import get_group_name, user_text_to_user_id
 from .logic import (populate_groups, get_group_id_for_service, set_host, get_host, set_member_on_floor,
@@ -17,16 +18,6 @@ from .errors import BotGroupError
 
 bp = Blueprint('dcbot', __name__, url_prefix="/dcbot")
 
-
-MAIN_CHANNEL = "defcon2019"
-
-# Messages
-
-NOT_A_PLAYER = '_You do not seem to be a Shellphish player at DEFCON CTF 2019. Contact the team lead if you believe ' \
-               'this is incorrect._'
-REQUEST_RECEIVED = "_Request received :) Hang on._"
-CHANNEL_DOES_NOT_EXIST = '_Channel for service %s does not exist. Maybe the channel hasn\'t been created yet. ' \
-                         'You may create the channel using the /newservice command._'
 
 # Admin UIDs
 

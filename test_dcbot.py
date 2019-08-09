@@ -4,6 +4,7 @@ from time import sleep
 from dcbot import create_app
 from dcbot.db import init_db
 from dcbot.slack_logic import SlackLogic, sl
+from dcbot.messages import REQUEST_RECEIVED, NOT_A_PLAYER, CHANNEL_DOES_NOT_EXIST
 from nose2.tools.decorators import with_teardown
 
 import dcbot.views
@@ -123,7 +124,7 @@ def test_listservice_not_dc():
     sleep(1)
     print(sl.results)
 
-    assert response.data == b'{"response_type":"ephemeral","text":"_You do not seem to be a Shellphish player at DEFCON CTF 2019. Contact the team lead if you believe this is incorrect._"}\n'
+    assert response.data == ('{"response_type":"ephemeral","text":"%s"}\n' % NOT_A_PLAYER).encode()
 
 
 @with_teardown(teardown)
@@ -204,15 +205,13 @@ def test_floor_add_player_fail():
 
     sleep(1)
 
-    assert response.data == b'{"response_type":"ephemeral","text":"_You do not seem to be a Shellphish player at DEFCON CTF 2019.' \
-                            b' Contact the team lead if you believe this is incorrect._"}\n'
+    assert response.data == ('{"response_type":"ephemeral","text":"%s"}\n' % NOT_A_PLAYER).encode()
     print("Successfully Denied Use of /floor")
 
     response = do_slack_post('floorstatus')
     print(response)
 
-    assert response.data == b'{"response_type":"ephemeral","text":"_You do not seem to be a Shellphish player at DEFCON CTF 2019.' \
-                            b' Contact the team lead if you believe this is incorrect._"}\n'
+    assert response.data == ('{"response_type":"ephemeral","text":"%s"}\n' % NOT_A_PLAYER).encode()
     print("Successfully Denied Use of /floorstatus")
 
     sl.reset()
@@ -228,7 +227,8 @@ def test_add_self_to_inexsisting_service():
                            follow_redirects=True)
     sleep(1)
 
-    assert response.data == b'{"response_type":"ephemeral","text":"_Channel for service not_an_existing_service_id does not exist. Maybe the channel hasn\'t been created yet. You may create the channel using the /newservice command._"}\n'
+    message = (CHANNEL_DOES_NOT_EXIST % 'not_an_existing_service_id')
+    assert response.data == ('{"response_type":"ephemeral","text":"%s"}\n' % message).encode()
 
 
 @with_teardown(teardown)
@@ -249,7 +249,7 @@ def test_add_non_dc_player_to_existing_service():
                            follow_redirects=True)
     sleep(1)
 
-    assert response.data == b'{"response_type":"ephemeral","text":"_You do not seem to be a Shellphish player at DEFCON CTF 2019. Contact the team lead if you believe this is incorrect._"}\n'
+    assert response.data == ('{"response_type":"ephemeral","text":"%s"}\n' % NOT_A_PLAYER).encode()
 
 
 @with_teardown(teardown)
@@ -270,4 +270,4 @@ def test_add_dc_player_to_existing_service():
                            follow_redirects=True)
     sleep(1)
 
-    assert response.data == b'_Request received :) Hang on._'
+    assert response.data == REQUEST_RECEIVED.encode()
