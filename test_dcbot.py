@@ -15,7 +15,6 @@ class TestSlackLogic:
 
     def reset(self):
         self.channels = {}
-        self.channels['defcon2019'] = (None, ['dc_user1', 'dc_user2', 'dc_user3'])
         self.results = []
 
     def hello_world(self, channel="#random"):
@@ -39,7 +38,9 @@ class TestSlackLogic:
         return self.get_members_for_channel(group_id)
 
     def get_members_for_channel(self, channel_id):
-        if channel_id in self.channels:
+        if channel_id == 'defcon2019':
+            yield from['dcbot', 'dc_user1', 'dc_user2', 'dc_user3']
+        elif channel_id in self.channels:
             yield from self.channels[channel_id][1]
 
     def get_member_info(self, member_id):
@@ -86,8 +87,9 @@ def test_echo():
                                  'user_id': 'some_user',
                                  'response_url': 'some_url'},
                            follow_redirects=True)
-    sleep(1)
     print(response)
+
+    sleep(1)
     print(sl.results)
 
     assert sl.results[0] == "Sent '{'response_type': 'ephemeral', 'text': 'User some_user said: ping'}' to 'some_url'"
@@ -102,8 +104,9 @@ def test_listservice_not_dc():
                                  'user_id': 'not_dc_user',
                                  'response_url': 'some_url'},
                            follow_redirects=True)
-    sleep(1)
     print(response)
+
+    sleep(1)
     print(sl.results)
 
     assert response.data == b'{"response_type":"ephemeral","text":"_You do not seem to be a Shellphish player at DEFCON CTF 2019. Contact the team lead if you believe this is incorrect._"}\n'
@@ -111,17 +114,41 @@ def test_listservice_not_dc():
     sl.reset()
 
 
-def test_listservice_dc():
+def test_listservice_none():
     response = client.post('/dcbot/listservice',
                            data={'command': '/listservice',
                                  'text': '',
                                  'user_id': 'dc_user1',
                                  'response_url': 'some_url'},
                            follow_redirects=True)
-    sleep(1)
     print(response)
+
+    sleep(1)
     print(sl.results)
 
-    assert response.data == b'{"response_type":"ephemeral","text":"_You do not seem to be a Shellphish player at DEFCON CTF 2019. Contact the team lead if you believe this is incorrect._"}\n'
+    assert response.data == b'{"attachments":[{"text":""}],"response_type":"ephemeral","text":"0 services online."}\n'
+
+    sl.reset()
+
+
+def test_single_service():
+    response = client.post('/dcbot/newservice',
+                           data={'command': '/newservice',
+                                 'text': 'some_service',
+                                 'user_id': 'dc_user1',
+                                 'response_url': 'some_url'},
+                           follow_redirects=True)
+    print(response)
+
+    response = client.post('/dcbot/listservice',
+                           data={'command': '/listservice',
+                                 'text': '',
+                                 'user_id': 'dc_user1',
+                                 'response_url': 'some_url'},
+                           follow_redirects=True)
+    print(response)
+
+    sleep(1)
+    print(sl.results)
 
     sl.reset()
