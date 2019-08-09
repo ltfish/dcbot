@@ -23,4 +23,10 @@ def create_app(test_config=None):
     from . import views
     app.register_blueprint(views.bp)
 
+    from .db import db_session
+
+    @app.teardown_request
+    def shutdown_session(exception=None):
+        db_session.remove()
+
     return app
