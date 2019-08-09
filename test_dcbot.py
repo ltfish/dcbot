@@ -138,7 +138,7 @@ def test_listservice_none():
 
 
 @with_teardown(teardown)
-def test_single_service():
+def test_new_service():
     response = do_slack_post('newservice', text='some_service', user_id='dc_user1')
     print(response)
 
@@ -147,6 +147,11 @@ def test_single_service():
 
     sleep(1)
     print(sl.results)
+
+    assert sl.results[0] == "Created channel 'some_service'"
+    assert sl.results[1] == "Added member 'dcbot' to 'some_service'"
+    assert sl.results[2] == "Sent '{'response_type': 'ephemeral', 'text': '_Successfully created a private channel for service some_service._'}' to 'some_url'"
+
 
 
 @with_teardown(teardown)
