@@ -80,6 +80,7 @@ Mark a user as not on the CTF floor.
 - [ ] Register events for: ~channel creation~, channel archiving, channel unarchiving
 - [ ] Bot interactions: Pinning brain dumps.
 - [ ] Unit tests
+- [ ] Automated update of removed serevices (archived channels)
 - Slash commands
 - [x] `/listservice`
 - [x] `/workon`

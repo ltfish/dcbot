@@ -138,10 +138,10 @@ def newservice():
     # is this guy a player?
     user_id = form['user_id']
     if not is_player(user_id):
-        return {
+        return jsonify({
             'response_type': 'ephemeral',
             'text': NOT_A_PLAYER,
-        }
+        })
 
     # sanitize service name
     service = form['text']
@@ -174,20 +174,20 @@ def workon():
     user_id = form['user_id']
     # is this user one of the players?
     if not is_player(user_id):
-        return {
+        return jsonify({
             'response_type': 'ephemeral',
             'text': NOT_A_PLAYER,
-        }
+        })
 
     # does this service exist?
     service = form['text']
     group_id = get_group_id_for_service(service)
 
     if group_id is None:
-        return {
+        return jsonify({
             'response_type': 'ephemeral',
             'text': CHANNEL_DOES_NOT_EXIST % service
-        }
+        })
 
     # add the user to that group
     th = threading.Thread(target=workon_worker, args=(form['response_url'], form['user_id'], service), daemon=True)
@@ -210,10 +210,10 @@ def host():
     user_id = form['user_id']
     # is this user one of the players?
     if not is_player(user_id):
-        return {
+        return jsonify({
             'response_type': 'ephemeral',
             'text': NOT_A_PLAYER,
-        }
+        })
 
     # TODO: Check if this user is one of the allowed service hosts
     # TODO: If not, show a warning, but still allow them to proceed
@@ -225,17 +225,17 @@ def host():
         service = get_service_for_group_id(group_id)
 
     if not service:
-        return {
+        return jsonify({
             'response_type': 'ephemeral',
             'text': '_Please specify the name of the service that you want to host._'
-        }
+        })
 
     group_id = get_group_id_for_service(service)
     if group_id is None:
-        return {
+        return jsonify({
             'response_type': 'ephemeral',
             'text': CHANNEL_DOES_NOT_EXIST % service
-        }
+        })
 
     # set the user as the host of thar service
     th = threading.Thread(target=host_worker, args=(form['response_url'], form['user_id'], group_id), daemon=True)
@@ -258,10 +258,10 @@ def unhost():
     user_id = form["user_id"]
     # is this user one of the players?
     if not is_player(user_id):
-        return {
+        return jsonify({
             'response_type': 'ephemeral',
             'text': NOT_A_PLAYER,
-        }
+        })
 
     th = threading.Thread(target=unhost_worker, args=(form['response_url'], form['user_id']), daemon=True)
     th.start()
@@ -282,10 +282,10 @@ def floor():
 
     user_id = form["user_id"]
     if not is_player(user_id):
-        return {
+        return jsonify({
             'response_type': 'ephemeral',
             'text': NOT_A_PLAYER,
-        }
+        })
 
     set_intent(form['user_id'])
 
@@ -307,10 +307,10 @@ def floorstatus():
 
     user_id = form["user_id"]
     if not is_player(user_id):
-        return {
+        return jsonify({
             'response_type': 'ephemeral',
             'text': NOT_A_PLAYER,
-        }
+        })
 
     wantstogo = [ ]
     onthefloor = [ ]
@@ -323,7 +323,7 @@ def floorstatus():
         elif intent == CTFFloorStatusEnum.Neutral:
             neutral.append("<@%s>" % member_id)
 
-    return {
+    return jsonify({
         "response_type": "ephemeral",
         "text": "*There are %d players who want to go to the CTF floor.*" % len(wantstogo),
         "attachments": [
@@ -343,7 +343,7 @@ def floorstatus():
                 "text": "\n".join(neutral),
             }
         ]
-    }
+    })
 
 
 @bp.route("/iamonthefloor")
@@ -406,6 +406,13 @@ def leavefloor():
     cmd = form['command']
     assert cmd == "/leavefloor"
 
+    # is this a player?
+    if not is_player(form['user_id']):
+        return jsonify({
+            'response_type': 'ephemeral',
+            'text': NOT_A_PLAYER,
+        })
+
     member_text = form['text']
     if not member_text:
         member_id = form['user_id']
@@ -420,6 +427,50 @@ def leavefloor():
     set_member_off_floor(member_id)
     return REQUEST_RECEIVED + " Player <@%s> is not on the floor any more." % member_id
 
+
+@bp.route("/bothelp", methods=("POST",))
+def bothelp():
+    """
+    Return the help message.
+
+    text: None
+    """
+
+    form = request.form
+    cmd = form['command']
+    assert cmd == "/bothelp"
+
+    if not is_player(form['user_id']):
+        return jsonify({
+            'response_type': 'ephemeral',
+            'text': NOT_A_PLAYER,
+        })
+
+    help_text = """List of commands supported by dcbot:
+- Services
+`/listservice`  List availab services that are currently online
+`/workon <service>`  Join a service channel
+`/newservice <service>`  Create a channel for a service
+- Service hosts
+`/host <service>`  Become a host of a service
+`/unhost`  No longer be a host for the serivce you are hosting
+- Trips to the CTF floor
+`/floorstatus`  List the status of the CTF floor
+`/floor`  Express my intent to go to the CTF floor
+`/leavefloor`  Leave the CTF floor
+- Administration
+`/approve <user>`  Approve a CTF floor request
+Detailed descriptions of each command can be found at https://github.com/ltfish/dcbot/blob/master/README.md.
+"""
+
+    return jsonify({
+        'response_type': 'ephemeral',
+        'attachments': [
+            {
+                'text': help_text,
+            },
+        ]
+    })
 
 #
 # Worker routines
