@@ -2,12 +2,12 @@
 from time import sleep
 
 from dcbot import create_app
-from dcbot.logic import populate_db
 from dcbot.db import init_db
 from dcbot.slack_logic import SlackLogic, sl
 from nose2.tools.decorators import with_teardown
 
 import dcbot.views
+import dcbot.logic
 
 
 main_channel = 'defcon2019'
@@ -81,10 +81,100 @@ dcbot.views.send_response = send_response
 
 
 init_db()
-populate_db()
+dcbot.logic.populate_db()
 app = create_app()
 client = app.test_client()
 
+def do_slack_post(command='', text='', user_id='some_user', response_url='some_url', follow_redirects=True):
+    command = '/' + command
+    route = '/dcbot' + command
+
+    response = client.post(route,
+                           data={'command': command,
+                                 'text': text,
+                                 'user_id': user_id,
+                                 'response_url': response_url},
+                           follow_redirects=follow_redirects)
+
+    return response
+
+def test_listservice_not_dc():
+    response = do_slack_post('listservice', user_id='not_dc_user')
+    print(response)
+
+    sleep(1)
+    print(sl.results)
+
+    assert response.data == b'{"response_type":"ephemeral","text":"_You do not seem to be a Shellphish player at DEFCON CTF 2019. Contact the team lead if you believe this is incorrect._"}\n'
+
+    sl.reset()
+
+
+def test_listservice_none():
+    response = do_slack_post('listservice', user_id='dc_user1')
+    print(response)
+
+    sleep(1)
+    print(sl.results)
+
+    assert response.data == b'{"attachments":[{"text":""}],"response_type":"ephemeral","text":"0 services online."}\n'
+
+    sl.reset()
+
+
+def test_single_service():
+    response = do_slack_post('newservice', text='some_service', user_id='dc_user1')
+    print(response)
+
+    response = do_slack_post('listservice', user_id='dc_user1')
+    print(response)
+
+    sleep(1)
+    print(sl.results)
+
+    sl.reset()
+
+def test_floor_add_player_success():
+    response = do_slack_post('floor', user_id='dc_user1')
+    print(response)
+
+    sleep(1)
+    assert response.data == b"_I get it. You want to be on the CTF floor. I'll let Giovanni know and get back to you later when it's your turn._"
+
+    response = do_slack_post('floorstatus', user_id='dc_user1')
+    print(response)
+
+    assert response.data == b'{"attachments":[{"text":"<@dc_user1> | Wants to go"},{"text":"*0 players are currently on the floor.*"},' \
+                            b'{"text":""},{"text":"*0 players are OK either way.*"},{"text":""}],"response_type":"ephemeral","text":' \
+                            b'"*There are 1 players who want to go to the CTF floor.*"}\n'
+
+
+    dcbot.logic.set_member_on_floor('dc_user1')
+
+    response = do_slack_post('floorstatus', user_id='dc_user1')
+    print(response)
+
+    assert response.data == b'{"attachments":[{"text":"<@dc_user1> | Wants to go"},{"text":"*0 players are currently on the floor.*"},' \
+                            b'{"text":""},{"text":"*0 players are OK either way.*"},{"text":""}],"response_type":"ephemeral","text":' \
+                            b'"*There are 1 players who want to go to the CTF floor.*"}\n'
+    sl.reset()
+
+def test_floor_add_player_fail():
+    response = do_slack_post('floor')
+    print(response)
+
+    sleep(1)
+
+    assert response.data == b'{"response_type":"ephemeral","text":"_You do not seem to be a Shellphish player at DEFCON CTF 2019. Contact the team lead if you believe this is incorrect._"}\n'
+
+    response = do_slack_post('floorstatus', user_id='dc_user1')
+    print(response)
+    assert response.data == b'{"attachments":[{"text":"<@dc_user1> | Wants to go"},{"text":"*0 players are currently on the floor.*"},' \
+                            b'{"text":""},{"text":"*0 players are OK either way.*"},{"text":""}],"response_type":"ephemeral","text":' \
+                            b'"*There are 1 players who want to go to the CTF floor.*"}\n'
+
+
+    sl.reset()
 
 @with_teardown(teardown)
 def test_hello():
@@ -94,12 +184,7 @@ def test_hello():
 
 @with_teardown(teardown)
 def test_echo():
-    response = client.post('/dcbot/echo',
-                           data={'command': '/echo',
-                                 'text': 'ping',
-                                 'user_id': 'some_user',
-                                 'response_url': 'some_url'},
-                           follow_redirects=True)
+    response = do_slack_post('echo', text='ping')
     print(response)
 
     sleep(1)
@@ -110,12 +195,7 @@ def test_echo():
 
 @with_teardown(teardown)
 def test_listservice_not_dc():
-    response = client.post('/dcbot/listservice',
-                           data={'command': '/listservice',
-                                 'text': '',
-                                 'user_id': 'not_dc_user',
-                                 'response_url': 'some_url'},
-                           follow_redirects=True)
+    response = do_slack_post('listservice', user_id='not_dc_user')
     print(response)
 
     sleep(1)
@@ -126,12 +206,7 @@ def test_listservice_not_dc():
 
 @with_teardown(teardown)
 def test_listservice_none():
-    response = client.post('/dcbot/listservice',
-                           data={'command': '/listservice',
-                                 'text': '',
-                                 'user_id': 'dc_user1',
-                                 'response_url': 'some_url'},
-                           follow_redirects=True)
+    response = do_slack_post('listservice', user_id='dc_user1')
     print(response)
 
     sleep(1)
@@ -142,20 +217,10 @@ def test_listservice_none():
 
 @with_teardown(teardown)
 def test_single_service():
-    response = client.post('/dcbot/newservice',
-                           data={'command': '/newservice',
-                                 'text': 'some_service',
-                                 'user_id': 'dc_user1',
-                                 'response_url': 'some_url'},
-                           follow_redirects=True)
+    response = do_slack_post('newservice', text='some_service', user_id='dc_user1')
     print(response)
 
-    response = client.post('/dcbot/listservice',
-                           data={'command': '/listservice',
-                                 'text': '',
-                                 'user_id': 'dc_user1',
-                                 'response_url': 'some_url'},
-                           follow_redirects=True)
+    response = do_slack_post('listservice', user_id='dc_user1')
     print(response)
 
     sleep(1)
@@ -164,50 +229,63 @@ def test_single_service():
 
 @with_teardown(teardown)
 def test_floor_add_player_success():
-    response = client.post('/dcbot/floor',
-                           data={'command': '/floor',
-                                 'text': '',
-                                 'user_id': 'dc_user1',
-                                 'response_url': 'some_url'},
-                           follow_redirects=True)
+    response = do_slack_post('floor', user_id='dc_user1')
     print(response)
 
     sleep(1)
     assert response.data == b"_I get it. You want to be on the CTF floor. I'll let Giovanni know and get back to you later when it's your turn._"
+    print("Successfully Used /floor")
 
-    response = client.post('/dcbot/floorstatus',
-                           data={'command': '/floorstatus',
-                                 'text': '',
-                                 'user_id': 'dc_user1',
-                                 'response_url': 'some_url'},
-                           follow_redirects=True)
+    response = do_slack_post('floorstatus', user_id='dc_user1')
     print(response)
+
     assert response.data == b'{"attachments":[{"text":"<@dc_user1> | Wants to go"},{"text":"*0 players are currently on the floor.*"},' \
                             b'{"text":""},{"text":"*0 players are OK either way.*"},{"text":""}],"response_type":"ephemeral","text":' \
                             b'"*There are 1 players who want to go to the CTF floor.*"}\n'
+
+    print("Successfully Added to wait list")
+
+
+    dcbot.logic.set_member_on_floor('dc_user1')
+
+    response = do_slack_post('floorstatus', user_id='dc_user1')
+    print(response)
+
+    assert response.data == b'{"attachments":[{"text":""},{"text":"*1 players are currently on the floor.*"},{"text":"<@dc_user1>"},' \
+                            b'{"text":"*0 players are OK either way.*"},{"text":""}],"response_type":"ephemeral","text":' \
+                            b'"*There are 0 players who want to go to the CTF floor.*"}\n'
+
+    print("Successfully moved to the Floor")
+
+    dcbot.logic.set_member_off_floor('dc_user1')
+
+    response = do_slack_post('floorstatus', user_id='dc_user1')
+    print(response)
+
+    assert response.data == b'{"attachments":[{"text":""},{"text":"*0 players are currently on the floor.*"},{"text":""}' \
+                            b',{"text":"*1 players are OK either way.*"},{"text":"<@dc_user1>"}],"response_type":"ephemeral",' \
+                            b'"text":"*There are 0 players who want to go to the CTF floor.*"}\n'
+
+    print("Successfully moved player off Floor")
+
 
 
 @with_teardown(teardown)
 def test_floor_add_player_fail():
-    response = client.post('/dcbot/floor',
-                           data={'command': '/floor',
-                                 'text': '',
-                                 'user_id': 'some_user',
-                                 'response_url': 'some_url'},
-                           follow_redirects=True)
+    response = do_slack_post('floor')
     print(response)
 
     sleep(1)
 
-    assert response.data == b'{"response_type":"ephemeral","text":"_You do not seem to be a Shellphish player at DEFCON CTF 2019. Contact the team lead if you believe this is incorrect._"}\n'
+    assert response.data == b'{"response_type":"ephemeral","text":"_You do not seem to be a Shellphish player at DEFCON CTF 2019.' \
+                            b' Contact the team lead if you believe this is incorrect._"}\n'
+    print("Successfully Denied Use of /floor")
 
-    response = client.post('/dcbot/floorstatus',
-                           data={'command': '/floorstatus',
-                                 'text': '',
-                                 'user_id': 'dc_user1',
-                                 'response_url': 'some_url'},
-                           follow_redirects=True)
+    response = do_slack_post('floorstatus')
     print(response)
-    assert response.data == b'{"attachments":[{"text":"<@dc_user1> | Wants to go"},{"text":"*0 players are currently on the floor.*"},' \
-                            b'{"text":""},{"text":"*0 players are OK either way.*"},{"text":""}],"response_type":"ephemeral","text":' \
-                            b'"*There are 1 players who want to go to the CTF floor.*"}\n'
+
+    assert response.data == b'{"response_type":"ephemeral","text":"_You do not seem to be a Shellphish player at DEFCON CTF 2019.' \
+                            b' Contact the team lead if you believe this is incorrect._"}\n'
+    print("Successfully Denied Use of /floorstatus")
+
+    sl.reset()
