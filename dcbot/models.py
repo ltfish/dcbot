@@ -3,7 +3,7 @@
 # Models
 #
 
-from sqlalchemy import Column, String, DateTime, Integer, ForeignKey
+from sqlalchemy import Column, String, DateTime, Integer, ForeignKey, Boolean
 
 from .db import Base
 
@@ -32,10 +32,12 @@ class Group(Base):
     id = Column(String(9), primary_key=True)
     name = Column(String(100))
     service_host_member_id = Column(String(9), ForeignKey('members.id'), nullable=True)
+    archived = Column(Boolean(), default=False)
 
-    def __init__(self, id_, name):
+    def __init__(self, id_, name, archived=False):
         self.id = id_
         self.name = name
+        self.archived = archived
 
 
 class RecentMemberMessage(Base):

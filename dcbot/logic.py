@@ -21,7 +21,9 @@ def populate_db(main_channel="defcon2019"):
     Populate the database: Pull members information from the channel specified by @main_channel.
     """
     channel_id = sl.get_group_id(main_channel)
+    print("Populating members...")
     populate_members(channel_id)
+    print("Populating groups...")
     populate_groups()
 
 
@@ -51,8 +53,8 @@ def populate_groups():
     """
     Populate the groups table for service-specific groups.
     """
-    service_names = sl.get_service_list()
-    for service_name in service_names:
+    service_info = list(sl.get_service_list())
+    for service_name, archived in service_info:
         group_id = sl.get_group_id_for_service(service_name)
         # does this group ID exist?
         try:
@@ -60,10 +62,12 @@ def populate_groups():
                 filter(Group.id == group_id).one()
             # update it
             g.name = get_group_name(service_name)
+            g.archived = archived
         except NoResultFound:
             # create a new one
-            g = Group(group_id, get_group_name(service_name))
+            g = Group(group_id, get_group_name(service_name), archived=archived)
             db_session.add(g)
+
     db_session.commit()
 
 
@@ -110,7 +114,8 @@ def get_service_for_service_host(user_id):
 
     try:
         g = db_session.query(Group).\
-            filter(Group.service_host_member_id == user_id).first()
+            filter(Group.service_host_member_id == user_id).\
+            filter(Group.archived == False).first()
     except NoResultFound:
         return None
 
@@ -188,6 +193,9 @@ def set_host(member_id, channel_id):
             filter(Group.id == channel_id).one()
     except NoResultFound:
         raise BotGroupError("Channel with ID %s is not found. Is the groups table populated?" % channel_id)
+
+    if g.archived:
+        raise BotGroupError("You cannot be a host on an archived service.")
 
     g.service_host_member_id = member_id
     db_session.commit()

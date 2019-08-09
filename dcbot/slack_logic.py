@@ -6,10 +6,7 @@ import slack
 
 from .errors import BotUserError, BotGroupError
 from .utils import get_group_name, get_service_name, group_name_prefix
-
-
-APP_TOKEN = "xoxp-709201667697-704134493186-715564967493-fe7260ed84c99c7569d5527075cbb33c"
-BOT_TOKEN = "xoxb-709201667697-715542707120-nLME1YTaVOtzZvSUBnhP5ttu"
+from .config import APP_TOKEN, BOT_TOKEN
 
 
 class SlackLogic:
@@ -127,20 +124,21 @@ class SlackLogic:
         except slack.errors.SlackApiError as ex:
             raise BotGroupError(ex.response.get("error", "unknown_error"))
 
-    def get_service_list(self):
+    def get_service_list(self, exclude_archived=False):
         """
-        Get a list of service names.
+        Get a list of service names and whether they are archived or not.
         """
         group_prefix = group_name_prefix()
         # TODO: Handle pagination
         try:
-            r = self.app.conversations_list(limit=1000, types="private_channel")
+            r = self.app.conversations_list(limit=1000, types="private_channel",
+                                            exclude_archived="true" if exclude_archived else "false")
         except slack.errors.SlackApiError as ex:
             raise BotGroupError(ex.response.get("error", "unknown error"))
         assert r.data.get("ok", False) is True
         for ch in r.data['channels']:
             if ch.get("name_normalized", "").startswith(group_prefix):
-                yield get_service_name(ch["name_normalized"])
+                yield get_service_name(ch["name_normalized"]), ch['is_archived']
 
 
 def test():

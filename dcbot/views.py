@@ -94,7 +94,9 @@ def listservice():
     services = sorted(list(sl.get_service_list()))
     txt = [ ]
     n = 0
-    for service in services:
+    for service, archived in services:
+        if archived:
+            continue
         n += 1
         # who's the host?
         host = get_host(get_group_id_for_service(service))
