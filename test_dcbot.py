@@ -9,6 +9,8 @@ from dcbot.slack_logic import SlackLogic, sl
 import dcbot.views
 
 
+main_channel = 'defcon2019'
+
 class TestSlackLogic:
     def __init__(self):
         self.reset()
@@ -31,6 +33,8 @@ class TestSlackLogic:
         return service_name if service_name in self.channels else None
 
     def get_group_id(self, group_name):
+        if group_name == main_channel:
+            return main_channel
         return group_name if group_name in self.channels else None
 
     def get_members_for_service(self, service_name):
@@ -38,17 +42,17 @@ class TestSlackLogic:
         return self.get_members_for_channel(group_id)
 
     def get_members_for_channel(self, channel_id):
-        if channel_id == 'defcon2019':
-            yield from['dcbot', 'dc_user1', 'dc_user2', 'dc_user3']
+        if channel_id == main_channel:
+            yield from ['dcbot', 'dc_user1', 'dc_user2', 'dc_user3']
         elif channel_id in self.channels:
             yield from self.channels[channel_id][1]
 
     def get_member_info(self, member_id):
         return {
             'id': member_id,
-            'name': "Name",
-            'display_name': "Display Name",
-            'real_name': "Real Name",
+            'name': member_id,
+            'display_name': member_id,
+            'real_name': member_id,
         }
 
     def add_member_to_service(self, member_id, service_name):
