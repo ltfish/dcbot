@@ -4,7 +4,7 @@ from time import sleep
 from dcbot import create_app
 from dcbot.db import init_db
 from dcbot.slack_logic import SlackLogic, sl
-from dcbot.messages import REQUEST_RECEIVED, NOT_A_PLAYER, CHANNEL_DOES_NOT_EXIST
+from dcbot.messages import *
 from nose2.tools.decorators import with_teardown
 
 import dcbot.views
@@ -161,7 +161,7 @@ def test_floor_add_player_success():
     print(response)
 
     sleep(1)
-    assert response.data == b"_I get it. You want to be on the CTF floor. I'll let Giovanni know and get back to you later when it's your turn._"
+    assert response.data == FLOOR_REQUEST_RECEIVED.encode()
     print("Successfully Used /floor")
 
     response = do_slack_post('floorstatus', user_id='dc_user1')

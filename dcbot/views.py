@@ -9,7 +9,7 @@ from flask import (Blueprint, flash, g, redirect, request, session, url_for, jso
 from .enums import CTFFloorStatusEnum
 from .logic import (is_player, get_service_for_group_id, get_service_for_service_host, get_user_id, set_intent,
     get_members_intents)
-from .messages import REQUEST_RECEIVED, NOT_A_PLAYER, MAIN_CHANNEL, CHANNEL_DOES_NOT_EXIST
+from .messages import *
 from .slack_logic import sl
 from .utils import get_group_name, user_text_to_user_id
 from .logic import (populate_groups, get_group_id_for_service, set_host, get_host, set_member_on_floor,
@@ -140,7 +140,7 @@ def newservice():
     if any([ch not in charset for ch in service]):
         return jsonify({
             'response_type': 'ephemeral',
-            'text': 'Invalid service name "%s". Service name can only include letters, digits, dashes and underscores.' % service
+            'text': INVALID_SERVICE_NAME % service
         })
 
     # start a new thread to create the channel
@@ -218,7 +218,7 @@ def host():
     if not service:
         return jsonify({
             'response_type': 'ephemeral',
-            'text': '_Please specify the name of the service that you want to host._'
+            'text': MISSING_SERVICE_NAME
         })
 
     group_id = get_group_id_for_service(service)
@@ -280,8 +280,7 @@ def floor():
 
     set_intent(form['user_id'])
 
-    return "_I get it. You want to be on the CTF floor. I'll let Giovanni know and " \
-           "get back to you later when it's your turn._"
+    return FLOOR_REQUEST_RECEIVED
 
 
 @bp.route("/floorstatus", methods=("POST", ))
@@ -345,7 +344,7 @@ def iamonthefloor():
     text: None
     """
 
-    return "Not implemented. Do we really need this?"
+    return NOT_IMPLEMENTED
 
 
 @bp.route("/slackers")
@@ -356,7 +355,7 @@ def slackers():
     text: None
     """
 
-    return "Not implemented. Do we really need this?"
+    return NOT_IMPLEMENTED
 
 
 @bp.route("/approve", methods=("POST",))
@@ -373,7 +372,7 @@ def approve():
 
     # Only certain people can do this. Let's hard code a list of allowed user IDs
     if form['user_id'] not in ADMIN_UIDS:
-        return "_You do not have permission to perform this request._"
+        return PERMISSION_DENIED
 
     member_text = form['text']
     member_id = user_text_to_user_id(member_text)
@@ -413,7 +412,7 @@ def leavefloor():
     if member_id != form['user_id']:
         # are we an admin?
         if form['user_id'] not in ADMIN_UIDS:
-            return "_You do not have permission to perform this request._"
+            return PERMISSION_DENIED
 
     set_member_off_floor(member_id)
     return REQUEST_RECEIVED + " Player <@%s> is not on the floor any more." % member_id
@@ -481,7 +480,7 @@ def workon_worker(response_url, user_id, service):
     except BotGroupError:
         send_response(response_url, {
             'response_type': 'ephemeral',
-            'text': 'Cannot add you to the channel for service %s. Maybe the channel has been archived.' % service
+            'text': CANNOT_JOIN_CHANNEL % service
         })
         return
 
@@ -505,8 +504,7 @@ def host_worker(response_url, user_id, group_id):
         # you can repeat the "/host" command to announce to everyone multiple times that you are the great host ;)
         send_response(response_url, {
             'response_type': 'ephemeral',
-            'text': '_You are currently hosting service %s. You cannot be a host for more than one service. You can, '
-                    'however, unhost it first using the /unhost command._' % current_hosting
+            'text': ALREADY_HOSTING % current_hosting
         })
         return
 
@@ -557,7 +555,7 @@ def unhost_worker(response_url, user_id):
     if current_hosting is None:
         send_response(response_url, {
             'response_type': 'ephemeral',
-            'text': '_You are not hosting any service._'
+            'text': NOT_HOSTING
         })
         return
 
@@ -598,10 +596,9 @@ def newservice_worker(response_url, service):
     populate_groups()
     send_response(response_url, {
         'response_type': 'ephemeral',
-        'text': '_Successfully created a private channel for service %s._' % service,
+        'text': CHANNEL_SUCCESSFULLY_CREATED % service,
     })
 
 
 def approve_worker(member_id):
-    sl.yell(member_id, "You are now invited to go to the CTF floor in Planet Hollywood. *Don't get lost!* "
-                       "Remember to run /leavefloor before you are leaving the CTF floor.")
+    sl.yell(member_id, INVITED_ON_FLOOR)
