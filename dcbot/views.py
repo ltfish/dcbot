@@ -511,12 +511,18 @@ def hype():
     God damn it.
     """
 
-    sl.yell(MAIN_CHANNEL, "<@%s> wants to hype the world..." % request.form["user_id"])
+    text = request.form["text"]
+    if text:
+        message = "<@%s> wants to hype the world and yells: %s" % (request.form["user_id"], text)
+    else:
+        message = "<@%s> wants to hype the world..." % request.form["user_id"]
+
+    sl.yell(MAIN_CHANNEL, message)
 
     # oops
     requests.post("http://nuke.shellphish.net:42069/hype", data={"key": HYPE_KEY})
 
-    return "You sure you really want to do this?"
+    return "People in the suite will hate you..."
 
 
 #
