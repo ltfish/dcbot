@@ -86,7 +86,7 @@ dcbot.logic.populate_db()
 app = create_app()
 client = app.test_client()
 
-def do_slack_post(command='', text='', user_id='some_user', response_url='some_url', follow_redirects=True):
+def manual_slack_post(command='', text='', user_id='some_user', response_url='some_url', follow_redirects=True):
     command = '/' + command
     route = '/dcbot' + command
 
@@ -107,47 +107,43 @@ def test_hello():
 
 @with_teardown(teardown)
 def test_echo():
-    response = do_slack_post('echo', text='ping')
-    print(response)
+    response = manual_slack_post('echo', text='ping')
 
     sleep(1)
-    print(sl.results)
+    #print(sl.results)
 
     assert sl.results[0] == "Sent '{'response_type': 'ephemeral', 'text': 'User some_user said: ping'}' to 'some_url'"
 
 
 @with_teardown(teardown)
 def test_listservice_not_dc():
-    response = do_slack_post('listservice', user_id='not_dc_user')
-    print(response)
+    response = manual_slack_post('listservice', user_id='not_dc_user')
 
     sleep(1)
-    print(sl.results)
+    #print(sl.results)
 
-    assert response.data == ('{"response_type":"ephemeral","text":"%s"}\n' % NOT_A_PLAYER).encode()
+    assert response.data == b'{"response_type":"ephemeral","text":"_You do not seem to be a Shellphish player at DEFCON CTF 2019. Contact the team lead if you believe this is incorrect._"}\n'
 
 
 @with_teardown(teardown)
 def test_listservice_none():
-    response = do_slack_post('listservice', user_id='dc_user1')
-    print(response)
+    response = manual_slack_post('listservice', user_id='dc_user1')
 
     sleep(1)
-    print(sl.results)
+    #print(sl.results)
 
     assert response.data == b'{"attachments":[{"text":""}],"response_type":"ephemeral","text":"0 services online."}\n'
 
 
 @with_teardown(teardown)
-def test_new_service():
-    response = do_slack_post('newservice', text='some_service', user_id='dc_user1')
-    print(response)
+def test_single_service():
+    response = manual_slack_post('newservice', text='some_service', user_id='dc_user1')
 
-    response = do_slack_post('listservice', user_id='dc_user1')
-    print(response)
+    response = manual_slack_post('listservice', user_id='dc_user1')
+    #print(response)
 
     sleep(1)
-    print(sl.results)
+    #print(sl.results)
 
     assert sl.results[0] == "Created channel 'some_service'"
     assert sl.results[1] == "Added member 'dcbot' to 'some_service'"
@@ -157,74 +153,63 @@ def test_new_service():
 
 @with_teardown(teardown)
 def test_floor_add_player_success():
-    response = do_slack_post('floor', user_id='dc_user1')
-    print(response)
+    response = manual_slack_post('floor', user_id='dc_user1')
 
     sleep(1)
     assert response.data == FLOOR_REQUEST_RECEIVED.encode()
-    print("Successfully Used /floor")
+    #print("Successfully Used /floor")
 
-    response = do_slack_post('floorstatus', user_id='dc_user1')
-    print(response)
+    response = manual_slack_post('floorstatus', user_id='dc_user1')
 
     assert response.data == b'{"attachments":[{"text":"<@dc_user1> | Wants to go"},{"text":"*0 players are currently on the floor.*"},' \
                             b'{"text":""},{"text":"*0 players are OK either way.*"},{"text":""}],"response_type":"ephemeral","text":' \
                             b'"*There are 1 players who want to go to the CTF floor.*"}\n'
 
-    print("Successfully Added to wait list")
+    #print("Successfully Added to wait list")
 
 
     dcbot.logic.set_member_on_floor('dc_user1')
 
-    response = do_slack_post('floorstatus', user_id='dc_user1')
-    print(response)
+    response = manual_slack_post('floorstatus', user_id='dc_user1')
 
     assert response.data == b'{"attachments":[{"text":""},{"text":"*1 players are currently on the floor.*"},{"text":"<@dc_user1>"},' \
                             b'{"text":"*0 players are OK either way.*"},{"text":""}],"response_type":"ephemeral","text":' \
                             b'"*There are 0 players who want to go to the CTF floor.*"}\n'
 
-    print("Successfully moved to the Floor")
+    #print("Successfully moved to the Floor")
 
     dcbot.logic.set_member_off_floor('dc_user1')
 
-    response = do_slack_post('floorstatus', user_id='dc_user1')
-    print(response)
+    response = manual_slack_post('floorstatus', user_id='dc_user1')
 
     assert response.data == b'{"attachments":[{"text":""},{"text":"*0 players are currently on the floor.*"},{"text":""}' \
                             b',{"text":"*1 players are OK either way.*"},{"text":"<@dc_user1>"}],"response_type":"ephemeral",' \
                             b'"text":"*There are 0 players who want to go to the CTF floor.*"}\n'
 
-    print("Successfully moved player off Floor")
+    #print("Successfully moved player off Floor")
 
 
 
 @with_teardown(teardown)
 def test_floor_add_player_fail():
-    response = do_slack_post('floor')
-    print(response)
+    response = manual_slack_post('floor')
 
     sleep(1)
 
     assert response.data == ('{"response_type":"ephemeral","text":"%s"}\n' % NOT_A_PLAYER).encode()
-    print("Successfully Denied Use of /floor")
+    #print("Successfully Denied Use of /floor")
 
-    response = do_slack_post('floorstatus')
-    print(response)
+    response = manual_slack_post('floorstatus')
 
     assert response.data == ('{"response_type":"ephemeral","text":"%s"}\n' % NOT_A_PLAYER).encode()
-    print("Successfully Denied Use of /floorstatus")
+    #print("Successfully Denied Use of /floorstatus")
 
     sl.reset()
 
 
 @with_teardown(teardown)
 def test_add_self_to_inexsisting_service():
-    response = client.post('/dcbot/workon',
-                           data={'command': '/workon',
-                                 'text': 'not_an_existing_service_id',
-                                 'user_id': 'dc_user1',
-                                 'response_url': 'some_url'},
-                           follow_redirects=True)
+    response = manual_slack_post('workon', text='not_an_existing_service_id', user_id='dc_user1')
     sleep(1)
 
     message = (CHANNEL_DOES_NOT_EXIST % 'not_an_existing_service_id')
@@ -233,20 +218,10 @@ def test_add_self_to_inexsisting_service():
 
 @with_teardown(teardown)
 def test_add_non_dc_player_to_existing_service():
-    client.post('/dcbot/newservice',
-                data={'command': '/newservice',
-                      'text': 'existing_service_id',
-                      'user_id': 'dc_user1',
-                      'response_url': 'some_url'},
-                follow_redirects=True)
+    manual_slack_post('newservice', text='existing_service_id', user_id='dc_user1')
     sleep(1)
 
-    response = client.post('/dcbot/workon',
-                           data={'command': '/workon',
-                                 'text': 'existing_service_id',
-                                 'user_id': 'inexisting_member_id',
-                                 'response_url': 'some_url'},
-                           follow_redirects=True)
+    response = manual_slack_post('workon', text='existing_service_id', user_id='inexisting_member_id')
     sleep(1)
 
     assert response.data == ('{"response_type":"ephemeral","text":"%s"}\n' % NOT_A_PLAYER).encode()
@@ -254,20 +229,10 @@ def test_add_non_dc_player_to_existing_service():
 
 @with_teardown(teardown)
 def test_add_dc_player_to_existing_service():
-    client.post('/dcbot/newservice',
-                data={'command': '/newservice',
-                      'text': 'existing_service_id',
-                      'user_id': 'dc_user1',
-                      'response_url': 'some_url'},
-                follow_redirects=True)
+    manual_slack_post('newservice', text='existing_service_id', user_id='dc_user1')
     sleep(1)
 
-    response = client.post('/dcbot/workon',
-                           data={'command': '/workon',
-                                 'text': 'existing_service_id',
-                                 'user_id': 'dc_user1',
-                                 'response_url': 'some_url'},
-                           follow_redirects=True)
+    response = manual_slack_post('workon', text='existing_service_id', user_id='dc_user1')
     sleep(1)
 
     assert response.data == REQUEST_RECEIVED.encode()

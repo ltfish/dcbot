@@ -438,16 +438,19 @@ def bothelp():
 
     help_text = """List of commands supported by dcbot:
 - Services
-`/listservice`  List availab services that are currently online
+`/listservice`  List available services that are currently online
 `/workon <service>`  Join a service channel
 `/newservice <service>`  Create a channel for a service
+
 - Service hosts
 `/host <service>`  Become a host of a service
 `/unhost`  No longer be a host for the serivce you are hosting
+
 - Trips to the CTF floor
 `/floorstatus`  List the status of the CTF floor
 `/floor`  Express my intent to go to the CTF floor
 `/leavefloor`  Leave the CTF floor
+
 - Administration
 `/approve <user>`  Approve a CTF floor request
 Detailed descriptions of each command can be found at https://github.com/ltfish/dcbot/blob/master/README.md.
