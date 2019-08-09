@@ -480,7 +480,9 @@ def bothelp():
             'text': NOT_A_PLAYER,
         })
 
-    help_text = """List of commands supported by dcbot:
+    help_text = """If you have questions, please ask <@UFHUW08MA> first.
+
+List of commands supported by dcbot:
 - Services
 `/listservice`  List available services that are currently online
 `/workon <service>`  Join a service channel
