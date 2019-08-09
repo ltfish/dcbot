@@ -100,7 +100,7 @@ def listservice():
     else:
         response_type = "ephemeral"
 
-    services = sl.get_service_list()
+    services = sorted(list(sl.get_service_list()))
     txt = [ ]
     n = 0
     for service in services:
