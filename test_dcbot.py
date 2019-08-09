@@ -150,7 +150,6 @@ def test_single_service():
     assert sl.results[2] == "Sent '{'response_type': 'ephemeral', 'text': '_Successfully created a private channel for service some_service._'}' to 'some_url'"
 
 
-
 @with_teardown(teardown)
 def test_floor_add_player_success():
     response = manual_slack_post('floor', user_id='dc_user1')
@@ -236,3 +235,36 @@ def test_add_dc_player_to_existing_service():
     sleep(1)
 
     assert response.data == REQUEST_RECEIVED.encode()
+
+
+@with_teardown(teardown)
+def test_invalid_new_service():
+    response = do_slack_post('newservice', text='some_bad_service!', user_id='dc_user1')
+    print(response)
+    assert response.data == b'{"response_type":"ephemeral","text":"Invalid service name some_bad_service!. Service name can only include letters, digits, dashes and underscores."}\n'
+
+    response = do_slack_post('listservice', user_id='dc_user1')
+    print(response)
+    assert response.data == b'{"attachments":[{"text":""}],"response_type":"ephemeral","text":"0 services online."}\n'
+
+    sleep(1)
+    print(sl.results)
+
+
+@with_teardown(teardown)
+def test_host_non_dc():
+    response = do_slack_post('host', text='some_service', user_id='some_user')
+    print(response)
+    assert response.data == b'{"response_type":"ephemeral","text":"_You do not seem to be a Shellphish player at DEFCON CTF 2019. Contact the team lead if you believe this is incorrect._"}\n'
+
+
+@with_teardown(teardown)
+def test_host_bad_service():
+    response = do_slack_post('host', text='some_bad_service', user_id='dc_user1')
+    print(response)
+    assert response.data == b'{"response_type":"ephemeral","text":"_Channel for service some_bad_service does not exist. Maybe the channel hasn\'t been created yet. You may create the channel using the /newservice command._"}\n'
+
+
+@with_teardown(teardown)
+def test_host_service():
+    pass
