@@ -240,31 +240,63 @@ def test_add_dc_player_to_existing_service():
 @with_teardown(teardown)
 def test_invalid_new_service():
     response = manual_slack_post('newservice', text='some_bad_service!', user_id='dc_user1')
-    print(response)
+    #print(response)
     assert response.data == b'{"response_type":"ephemeral","text":"Invalid service name some_bad_service!. Service name can only include letters, digits, dashes and underscores."}\n'
 
     response = manual_slack_post('listservice', user_id='dc_user1')
-    print(response)
+    #print(response)
     assert response.data == b'{"attachments":[{"text":""}],"response_type":"ephemeral","text":"0 services online."}\n'
 
     sleep(1)
-    print(sl.results)
+    #print(sl.results)
 
 
 @with_teardown(teardown)
 def test_host_non_dc():
     response = manual_slack_post('host', text='some_service', user_id='some_user')
-    print(response)
+    #print(response)
     assert response.data == b'{"response_type":"ephemeral","text":"_You do not seem to be a Shellphish player at DEFCON CTF 2019. Contact the team lead if you believe this is incorrect._"}\n'
 
 
 @with_teardown(teardown)
 def test_host_bad_service():
     response = manual_slack_post('host', text='some_bad_service', user_id='dc_user1')
-    print(response)
+    #print(response)
     assert response.data == b'{"response_type":"ephemeral","text":"_Channel for service some_bad_service does not exist. Maybe the channel hasn\'t been created yet. You may create the channel using the /newservice command._"}\n'
 
 
 @with_teardown(teardown)
 def test_host_service():
     pass
+
+@with_teardown(teardown)
+def test_approve_floor_player():
+    player_approve = 'dc_user1'
+    manual_slack_post('floor', text='', user_id=player_approve)
+    sleep(1)
+
+    response = manual_slack_post('approve', text=player_approve, user_id='ULQ3YEH5G')
+    sleep(1)
+
+    assert response.data == b'_Request received :) Hang on._ Player <@dc_user1> is set to be on the floor.'
+
+    response = manual_slack_post('floorstatus', user_id=player_approve)
+    sleep(1)
+
+    assert response.data == b'{"attachments":[{"text":""},{"text":"*1 players are currently on the floor.*"},{"text":"<@dc_user1>"}' \
+                            b',{"text":"*0 players are OK either way.*"},{"text":""}],"response_type":"ephemeral","text":"*There are 0' \
+                            b' players who want to go to the CTF floor.*"}\n'
+
+def test_leave_floor():
+    player_approve = 'dc_user1'
+    response = manual_slack_post('leavefloor', user_id=player_approve)
+    sleep(1)
+
+    assert response.data == b'_Request received :) Hang on._ Player <@dc_user1> is not on the floor any more.'
+
+    response = manual_slack_post('floorstatus', user_id=player_approve)
+    sleep(1)
+
+    assert response.data == b'{"attachments":[{"text":""},{"text":"*0 players are currently on the floor.*"},{"text":""},' \
+                            b'{"text":"*1 players are OK either way.*"},{"text":"<@dc_user1>"}],"response_type":"ephemeral",' \
+                            b'"text":"*There are 0 players who want to go to the CTF floor.*"}\n'
