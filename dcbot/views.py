@@ -1,11 +1,13 @@
 
 import string
 import threading
+import functools
 
 import requests
 
 from flask import (Blueprint, flash, g, redirect, request, session, url_for, jsonify)
 
+from .config import HYPE_KEY
 from .enums import CTFFloorStatusEnum
 from .logic import (is_player, get_service_for_group_id, get_service_for_service_host, get_user_id, set_intent,
     get_members_intents)
@@ -37,6 +39,28 @@ def send_response(response_url, r):
                   json=r
                   )
 
+#
+# Method wrappers
+#
+
+
+def verify_signature(f):
+    @functools.wraps(f)
+    def inner(*args, **kwargs):
+        signature = request.headers.get("X-Slack-Signature", None)
+        if not signature:
+            return "_Signature is not found._"
+
+        # verify the signature
+        data = request.get_data()
+        timestamp = request.headers.get('X-Slack-Request-Timestamp', "0.0").encode("ascii")
+        verified = sl.verify_signature(data, timestamp, signature)
+        if not verified:
+            return "_Signature verification failed._"
+
+        return f(*args, **kwargs)
+    return inner
+
 
 #
 # Views
@@ -48,6 +72,7 @@ def index():
 
 
 @bp.route("/echo", methods=('POST',))
+@verify_signature
 def echo():
     """
     Echo back the message that the user has sent, together with user ID.
@@ -69,6 +94,7 @@ def echo():
 
 
 @bp.route("/listservice", methods=('POST',))
+@verify_signature
 def listservice():
     """
     List all currently available services.
@@ -118,6 +144,7 @@ def listservice():
 
 
 @bp.route("/newservice", methods=('POST',))
+@verify_signature
 def newservice():
     """
     Create a new channel for service.
@@ -153,6 +180,7 @@ def newservice():
 
 
 @bp.route("/workon", methods=('POST',))
+@verify_signature
 def workon():
     """
     User @user_id wants to work on a service specified in the text.
@@ -189,6 +217,7 @@ def workon():
 
 
 @bp.route("/host", methods=('POST',))
+@verify_signature
 def host():
     """
     User @user_id wants to be a host of a service specified in the text.
@@ -237,6 +266,7 @@ def host():
 
 
 @bp.route("/unhost", methods=("POST",))
+@verify_signature
 def unhost():
     """
     User @user_id wants to remove himself from the service host position that he is currently taking.
@@ -262,6 +292,7 @@ def unhost():
 
 
 @bp.route("/floor", methods=("POST",))
+@verify_signature
 def floor():
     """
     User @user_id wants to be on the CTF floor.
@@ -286,6 +317,7 @@ def floor():
 
 
 @bp.route("/floorstatus", methods=("POST", ))
+@verify_signature
 def floorstatus():
     """
     List everyone who has requested to be on the floor.
@@ -350,6 +382,7 @@ def iamonthefloor():
 
 
 @bp.route("/slackers")
+
 def slackers():
     """
     Get a list of "slackers".
@@ -361,6 +394,7 @@ def slackers():
 
 
 @bp.route("/approve", methods=("POST",))
+@verify_signature
 def approve():
     """
     Approve a player's request of going on to the CTF floor.
@@ -386,6 +420,7 @@ def approve():
 
 
 @bp.route("/leavefloor", methods=("POST",))
+@verify_signature
 def leavefloor():
     """
     Leave the CTF floor.
@@ -421,6 +456,7 @@ def leavefloor():
 
 
 @bp.route("/bothelp", methods=("POST",))
+@verify_signature
 def bothelp():
     """
     Return the help message.
@@ -466,6 +502,22 @@ Detailed descriptions of each command can be found at https://github.com/ltfish/
             },
         ]
     })
+
+
+@bp.route("/hype", methods=("POST",))
+@verify_signature
+def hype():
+    """
+    God damn it.
+    """
+
+    sl.yell(MAIN_CHANNEL, "<@%s> wants to hype the world..." % request.form["user_id"])
+
+    # oops
+    requests.post("http://nuke.shellphish.net:42069/hype", data={"key": HYPE_KEY})
+
+    return "You sure you really want to do this?"
+
 
 #
 # Worker routines

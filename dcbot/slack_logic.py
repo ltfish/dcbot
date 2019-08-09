@@ -2,17 +2,36 @@
 Slack-related logic layer of dcbot.
 """
 
+import time
+import hmac
+import hashlib
+
 import slack
 
 from .errors import BotUserError, BotGroupError
 from .utils import get_group_name, get_service_name, group_name_prefix
-from .config import APP_TOKEN, BOT_TOKEN
+from .config import APP_TOKEN, BOT_TOKEN, SIGNING_SECRET
 
 
 class SlackLogic:
     def __init__(self, app, bot):
         self.app = app
         self.bot = bot
+
+    @staticmethod
+    def verify_signature(body, ts, signature):
+        if abs(time.time() - float(ts.decode("ascii"))) > 60 * 5:
+            # The request timestamp is more than five minutes from local time.
+            # It could be a replay attack, so let's ignore it.
+            return False
+
+        sig_basestring = b'v0:' + ts + b':' + body
+        sig = 'v0=' + hmac.new(
+            SIGNING_SECRET,
+            sig_basestring,
+            hashlib.sha256,
+        ).hexdigest()
+        return sig == signature
 
     def hello_world(self, channel="#random"):
         """
