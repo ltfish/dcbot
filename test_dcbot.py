@@ -69,7 +69,7 @@ class TestSlackLogic:
             self.results.append("Added member '{}' to '{}'".format(member_id, service_name))
 
     def get_service_list(self):
-        yield from self.channels
+        yield from [(e, False) for e in self.channels]
 
 for attr in dir(TestSlackLogic):
     if not attr.startswith('_'):
@@ -239,11 +239,11 @@ def test_add_dc_player_to_existing_service():
 
 @with_teardown(teardown)
 def test_invalid_new_service():
-    response = do_slack_post('newservice', text='some_bad_service!', user_id='dc_user1')
+    response = manual_slack_post('newservice', text='some_bad_service!', user_id='dc_user1')
     print(response)
     assert response.data == b'{"response_type":"ephemeral","text":"Invalid service name some_bad_service!. Service name can only include letters, digits, dashes and underscores."}\n'
 
-    response = do_slack_post('listservice', user_id='dc_user1')
+    response = manual_slack_post('listservice', user_id='dc_user1')
     print(response)
     assert response.data == b'{"attachments":[{"text":""}],"response_type":"ephemeral","text":"0 services online."}\n'
 
@@ -253,14 +253,14 @@ def test_invalid_new_service():
 
 @with_teardown(teardown)
 def test_host_non_dc():
-    response = do_slack_post('host', text='some_service', user_id='some_user')
+    response = manual_slack_post('host', text='some_service', user_id='some_user')
     print(response)
     assert response.data == b'{"response_type":"ephemeral","text":"_You do not seem to be a Shellphish player at DEFCON CTF 2019. Contact the team lead if you believe this is incorrect._"}\n'
 
 
 @with_teardown(teardown)
 def test_host_bad_service():
-    response = do_slack_post('host', text='some_bad_service', user_id='dc_user1')
+    response = manual_slack_post('host', text='some_bad_service', user_id='dc_user1')
     print(response)
     assert response.data == b'{"response_type":"ephemeral","text":"_Channel for service some_bad_service does not exist. Maybe the channel hasn\'t been created yet. You may create the channel using the /newservice command._"}\n'
 
