@@ -11,6 +11,12 @@ import dcbot.views
 
 main_channel = 'defcon2019'
 
+
+def teardown():
+    sl.channels = {}
+    sl.results = []
+
+
 class TestSlackLogic:
     def __init__(self):
         self.reset()
@@ -66,7 +72,7 @@ class TestSlackLogic:
 for attr in dir(TestSlackLogic):
     if not attr.startswith('_'):
         setattr(SlackLogic, attr, getattr(TestSlackLogic, attr))
-sl.reset()
+teardown()
 
 def send_response(response_url, r):
     dcbot.slack_logic.sl.results.append("Sent '{}' to '{}'".format(r, response_url))
@@ -98,8 +104,6 @@ def test_echo():
 
     assert sl.results[0] == "Sent '{'response_type': 'ephemeral', 'text': 'User some_user said: ping'}' to 'some_url'"
 
-    sl.reset()
-
 
 def test_listservice_not_dc():
     response = client.post('/dcbot/listservice',
@@ -115,8 +119,6 @@ def test_listservice_not_dc():
 
     assert response.data == b'{"response_type":"ephemeral","text":"_You do not seem to be a Shellphish player at DEFCON CTF 2019. Contact the team lead if you believe this is incorrect._"}\n'
 
-    sl.reset()
-
 
 def test_listservice_none():
     response = client.post('/dcbot/listservice',
@@ -131,8 +133,6 @@ def test_listservice_none():
     print(sl.results)
 
     assert response.data == b'{"attachments":[{"text":""}],"response_type":"ephemeral","text":"0 services online."}\n'
-
-    sl.reset()
 
 
 def test_single_service():
@@ -155,7 +155,6 @@ def test_single_service():
     sleep(1)
     print(sl.results)
 
-    sl.reset()
 
 def test_floor_add_player_success():
     response = client.post('/dcbot/floor',
@@ -181,8 +180,6 @@ def test_floor_add_player_success():
                             b'"*There are 1 players who want to go to the CTF floor.*"}\n'
 
 
-    sl.reset()
-
 def test_floor_add_player_fail():
     response = client.post('/dcbot/floor',
                            data={'command': '/floor',
@@ -206,6 +203,3 @@ def test_floor_add_player_fail():
     assert response.data == b'{"attachments":[{"text":"<@dc_user1> | Wants to go"},{"text":"*0 players are currently on the floor.*"},' \
                             b'{"text":""},{"text":"*0 players are OK either way.*"},{"text":""}],"response_type":"ephemeral","text":' \
                             b'"*There are 1 players who want to go to the CTF floor.*"}\n'
-
-
-    sl.reset()
