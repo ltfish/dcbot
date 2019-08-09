@@ -5,6 +5,7 @@ from dcbot import create_app
 from dcbot.logic import populate_db
 from dcbot.db import init_db
 from dcbot.slack_logic import SlackLogic, sl
+from nose2.tools.decorators import with_teardown
 
 import dcbot.views
 
@@ -85,11 +86,13 @@ app = create_app()
 client = app.test_client()
 
 
+@with_teardown(teardown)
 def test_hello():
     response = client.get('/dcbot', follow_redirects=True)
     assert response.data == b'Hello, world!'
 
 
+@with_teardown(teardown)
 def test_echo():
     response = client.post('/dcbot/echo',
                            data={'command': '/echo',
@@ -105,6 +108,7 @@ def test_echo():
     assert sl.results[0] == "Sent '{'response_type': 'ephemeral', 'text': 'User some_user said: ping'}' to 'some_url'"
 
 
+@with_teardown(teardown)
 def test_listservice_not_dc():
     response = client.post('/dcbot/listservice',
                            data={'command': '/listservice',
@@ -120,6 +124,7 @@ def test_listservice_not_dc():
     assert response.data == b'{"response_type":"ephemeral","text":"_You do not seem to be a Shellphish player at DEFCON CTF 2019. Contact the team lead if you believe this is incorrect._"}\n'
 
 
+@with_teardown(teardown)
 def test_listservice_none():
     response = client.post('/dcbot/listservice',
                            data={'command': '/listservice',
@@ -135,6 +140,7 @@ def test_listservice_none():
     assert response.data == b'{"attachments":[{"text":""}],"response_type":"ephemeral","text":"0 services online."}\n'
 
 
+@with_teardown(teardown)
 def test_single_service():
     response = client.post('/dcbot/newservice',
                            data={'command': '/newservice',
@@ -156,6 +162,7 @@ def test_single_service():
     print(sl.results)
 
 
+@with_teardown(teardown)
 def test_floor_add_player_success():
     response = client.post('/dcbot/floor',
                            data={'command': '/floor',
@@ -180,6 +187,7 @@ def test_floor_add_player_success():
                             b'"*There are 1 players who want to go to the CTF floor.*"}\n'
 
 
+@with_teardown(teardown)
 def test_floor_add_player_fail():
     response = client.post('/dcbot/floor',
                            data={'command': '/floor',
