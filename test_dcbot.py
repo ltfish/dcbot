@@ -156,3 +156,56 @@ def test_single_service():
     print(sl.results)
 
     sl.reset()
+
+def test_floor_add_player_success():
+    response = client.post('/dcbot/floor',
+                           data={'command': '/floor',
+                                 'text': '',
+                                 'user_id': 'dc_user1',
+                                 'response_url': 'some_url'},
+                           follow_redirects=True)
+    print(response)
+
+    sleep(1)
+    assert response.data == b"_I get it. You want to be on the CTF floor. I'll let Giovanni know and get back to you later when it's your turn._"
+
+    response = client.post('/dcbot/floorstatus',
+                           data={'command': '/floorstatus',
+                                 'text': '',
+                                 'user_id': 'dc_user1',
+                                 'response_url': 'some_url'},
+                           follow_redirects=True)
+    print(response)
+    assert response.data == b'{"attachments":[{"text":"<@dc_user1> | Wants to go"},{"text":"*0 players are currently on the floor.*"},' \
+                            b'{"text":""},{"text":"*0 players are OK either way.*"},{"text":""}],"response_type":"ephemeral","text":' \
+                            b'"*There are 1 players who want to go to the CTF floor.*"}\n'
+
+
+    sl.reset()
+
+def test_floor_add_player_fail():
+    response = client.post('/dcbot/floor',
+                           data={'command': '/floor',
+                                 'text': '',
+                                 'user_id': 'some_user',
+                                 'response_url': 'some_url'},
+                           follow_redirects=True)
+    print(response)
+
+    sleep(1)
+
+    assert response.data == b'{"response_type":"ephemeral","text":"_You do not seem to be a Shellphish player at DEFCON CTF 2019. Contact the team lead if you believe this is incorrect._"}\n'
+
+    response = client.post('/dcbot/floorstatus',
+                           data={'command': '/floorstatus',
+                                 'text': '',
+                                 'user_id': 'dc_user1',
+                                 'response_url': 'some_url'},
+                           follow_redirects=True)
+    print(response)
+    assert response.data == b'{"attachments":[{"text":"<@dc_user1> | Wants to go"},{"text":"*0 players are currently on the floor.*"},' \
+                            b'{"text":""},{"text":"*0 players are OK either way.*"},{"text":""}],"response_type":"ephemeral","text":' \
+                            b'"*There are 1 players who want to go to the CTF floor.*"}\n'
+
+
+    sl.reset()
