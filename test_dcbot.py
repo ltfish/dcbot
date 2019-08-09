@@ -211,3 +211,58 @@ def test_floor_add_player_fail():
     print("Successfully Denied Use of /floorstatus")
 
     sl.reset()
+
+
+@with_teardown(teardown)
+def test_add_self_to_inexsisting_service():
+    response = client.post('/dcbot/workon',
+                           data={'command': '/workon',
+                                 'text': 'not_an_existing_service_id',
+                                 'user_id': 'dc_user1',
+                                 'response_url': 'some_url'},
+                           follow_redirects=True)
+    sleep(1)
+
+    assert response.data == b'{"response_type":"ephemeral","text":"_Channel for service not_an_existing_service_id does not exist. Maybe the channel hasn\'t been created yet. You may create the channel using the /newservice command._"}\n'
+
+
+@with_teardown(teardown)
+def test_add_non_dc_player_to_existing_service():
+    client.post('/dcbot/newservice',
+                data={'command': '/newservice',
+                      'text': 'existing_service_id',
+                      'user_id': 'dc_user1',
+                      'response_url': 'some_url'},
+                follow_redirects=True)
+    sleep(1)
+
+    response = client.post('/dcbot/workon',
+                           data={'command': '/workon',
+                                 'text': 'existing_service_id',
+                                 'user_id': 'inexisting_member_id',
+                                 'response_url': 'some_url'},
+                           follow_redirects=True)
+    sleep(1)
+
+    assert response.data == b'{"response_type":"ephemeral","text":"_You do not seem to be a Shellphish player at DEFCON CTF 2019. Contact the team lead if you believe this is incorrect._"}\n'
+
+
+@with_teardown(teardown)
+def test_add_dc_player_to_existing_service():
+    client.post('/dcbot/newservice',
+                data={'command': '/newservice',
+                      'text': 'existing_service_id',
+                      'user_id': 'dc_user1',
+                      'response_url': 'some_url'},
+                follow_redirects=True)
+    sleep(1)
+
+    response = client.post('/dcbot/workon',
+                           data={'command': '/workon',
+                                 'text': 'existing_service_id',
+                                 'user_id': 'dc_user1',
+                                 'response_url': 'some_url'},
+                           follow_redirects=True)
+    sleep(1)
+
+    assert response.data == b'_Request received :) Hang on._'
