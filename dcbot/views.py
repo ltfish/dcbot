@@ -165,6 +165,12 @@ def newservice():
 
     # sanitize service name
     service = form['text']
+    if not service:
+        return jsonify({
+            'response_type': 'ephemeral',
+            'text': 'Please specify a service name',
+        })
+
     charset = string.ascii_letters + string.digits + "-_"
     if any([ch not in charset for ch in service]):
         return jsonify({
