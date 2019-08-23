@@ -1,0 +1,5 @@
+flask
+nose2
+requests
+slackclient
+sqlalchemy
